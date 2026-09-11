@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Bibliotecas externas necessárias para Drag & Drop e animações de drag -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<style>
+    /* Estilos para indicar interatividade ao arrastar */
+    .drag-handle {
+        cursor: grab;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+    .sortable-ghost {
+        opacity: 0.4;
+        background-color: #e9ecef !important;
+    }
+    .badge-dancarino {
+        cursor: grab;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.85rem;
+        padding: 6px 10px;
+        user-select: none;
+    }
+    .badge-dancarino:active {
+        cursor: grabbing;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-calendar-event"></i> Gestão de Apresentações</h2>
+    <button class="btn btn-warning text-dark fw-bold" data-bs-toggle="collapse" data-bs-target="#formApresentacao" onclick="limparFormApresentacao()">
+        <i class="bi bi-calendar-plus"></i> Montar Nova Apresentação
+    </button>
+</div>
+
+<!-- ÁREA DE MONTAGEM E ESCALA DO EVENTO -->
+<div class="collapse mb-4" id="formApresentacao">
+    <div class="card card-custom p-4">
+        <h4 class="card-title text-warning text-dark mb-3" id="formAprTitulo">Montar Escala do Evento</h4>
+        <input type="hidden" id="apresentacao_id">
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-5">
+                <label class="form-label fw-bold">Nome do Evento:*</label>
+                <input type="text" id="ev_nome" class="form-control" placeholder="Ex: Oktobertanz 2026">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Data:*</label>
+                <input type="date" id="ev_data" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Local / Cidade:*</label>
+                <input type="text" id="ev_local" class="form-control" placeholder="Ex: Pavilhão de Eventos - Treze Tílias">
+            </div>
+        </div>
+
+        <h6 class="text-secondary border-bottom pb-2 fw-bold">Seleção de Dança e Escalados</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">a) Selecione a Dança:</label>
+                <select id="sel_danca" class="form-select">
+                    <option value="">-- Escolha uma dança --</option>
+                    {% for d in dancas %}
+                        <option value="{{ d.id }}">{{ d.nome }} ({{ d.origem or 'Geral' }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">b) Marque os Dançarinos Escalados:</label>
+                <div class="border rounded p-2 bg-white" style="max-height: 180px; overflow-y: auto;">
+                    {% for p in pessoas %}
+                    <div class="form-check">
+                        <input class="form-check-input chk-pess" type="checkbox" value="{{ p.id }}" data-nome="{{ p.nome }}" id="pess_{{ p.id }}">
+                        <label class="form-check-label" for="pess_{{ p.id }}">{{ p.nome }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mb-4">
+            <button type="button" class="btn btn-outline-primary" onclick="adicionarDancaEscala()">
+                <i class="bi bi-plus-lg"></i> Adicionar Dança ao Roteiro
+            </button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+            <h6 class="text-secondary mb-0 fw-bold">Roteiro Montado</h6>
+            <small class="text-muted"><i class="bi bi-info-circle"></i> Arraste os itens ou dançarinos para reordenar</small>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-3" id="tbRoteiro">
+                <thead class="table-light">
+                    <tr>
+                        <th width="40" class="text-center">#</th>
+                        <th width="70" class="text-center">Ordem</th>
+                        <th>Dança</th>
+                        <th>Integrantes Escalados (Arraste para reordenar)</th>
+                        <th width="60" class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRoteiro">
+                    <!-- Linhas inseridas via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-end">
+            <button type="button" class="btn btn-secondary me-2" onclick="limparFormApresentacao()">Cancelar</button>
+            <button type="button" class="btn btn-success btn-lg" onclick="salvarApresentacaoWeb()" id="btnSalvarApr">
+                <i class="bi bi-check2-circle"></i> Salvar Apresentação
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- HISTÓRICO E REIMPRESSÃO -->
+<div class="card card-custom p-3">
+    <h5 class="card-title mb-3">Apresentações Cadastradas</h5>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th>Nome do Evento</th>
+                    <th>Local</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for apr in apresentacoes %}
+                <tr>
+                    <td><span class="badge bg-secondary">{{ apr.data_evento.strftime('%d/%m/%Y') if apr.data_evento else '—' }}</span></td>
+                    <td class="fw-bold">{{ apr.nome_evento }}</td>
+                    <td>{{ apr.local_evento }}</td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-warning btn-sm me-1" onclick="editarApresentacao({{ apr.id }})">
+                            <i class="bi bi-pencil-square"></i> Editar Escala
+                        </button>
+                        <a href="{{ url_for('gerar_pdf_apresentacao', apresentacao_id=apr.id) }}" target="_blank" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">Nenhuma apresentação cadastrada até o momento.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let repertorioTemp = [];
+    let sortableRoteiro = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Habilita a ordenação por Drag and Drop nas linhas do Roteiro
+        const tbody = document.getElementById('tbodyRoteiro');
+        if (tbody) {
+            sortableRoteiro = new Sortable(tbody, {
+                animation: 150,
+                handle: '.drag-handle-danca',
+                ghostClass: 'sortable-ghost',
+                onEnd: function () {
+                    sincronizarOrdemAposDrag();
+                }
+            });
+        }
+    });
+
+    function adicionarDancaEscala() {
+        const selDanca = document.getElementById('sel_danca');
+        const dancaId = selDanca.value;
+        const nomeDanca = selDanca.options[selDanca.selectedIndex]?.text;
+
+        if (!dancaId) {
+            alert('Selecione uma dança!');
+            return;
+        }
+
+        let integrantes = [];
+        document.querySelectorAll('.chk-pess:checked').forEach(chk => {
+            integrantes.push({
+                id: parseInt(chk.value),
+                nome: chk.getAttribute('data-nome')
+            });
+        });
+
+        if (integrantes.length === 0) {
+            alert('Marque pelo menos um integrante para esta dança!');
+            return;
+        }
+
+        repertorioTemp.push({
+            danca_id: parseInt(dancaId),
+            nome_danca: nomeDanca,
+            ordem: repertorioTemp.length + 1,
+            integrantes: integrantes
+        });
+
+        atualizarTabela();
+        selDanca.value = '';
+        document.querySelectorAll('.chk-pess').forEach(chk => chk.checked = false);
+    }
+
+    function atualizarTabela() {
+        const tbody = document.getElementById('tbodyRoteiro');
+        tbody.innerHTML = '';
+
+        repertorioTemp.forEach((item, indexDanca) => {
+            let tr = document.createElement('tr');
+            tr.setAttribute('data-index-danca', indexDanca);
+
+            let HTMLIntegrantes = `<div class="d-flex flex-wrap gap-1 container-dancarinos" data-index-danca="${indexDanca}">`;
+            
+            item.integrantes.forEach((p) => {
+                HTMLIntegrantes += `
+                    <span class="badge bg-primary text-white badge-dancarino" data-id="${p.id}" data-nome="${p.nome}">
+                        <i class="bi bi-grip-vertical"></i> ${p.nome}
+                    </span>
+                `;
+            });
+            HTMLIntegrantes += `</div>`;
+
+            tr.innerHTML = `
+                <td class="text-center drag-handle-danca" style="cursor: grab;">
+                    <i class="bi bi-grip-vertical fs-5 text-secondary"></i>
+                </td>
+                <td class="fw-bold text-center col-ordem">${indexDanca + 1}</td>
+                <td>${item.nome_danca}</td>
+                <td>${HTMLIntegrantes}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerDanca(${indexDanca})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        inicializarSortableDancarinos();
+    }
+
+    // Inicializa Drag and Drop nas badges dos dançarinos dentro de cada dança
+    function inicializarSortableDancarinos() {
+        document.querySelectorAll('.container-dancarinos').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function () {
+                    const indexDanca = parseInt(container.getAttribute('data-index-danca'));
+                    const novosDancarinos = [];
+
+                    container.querySelectorAll('.badge-dancarino').forEach(badge => {
+                        novosDancarinos.push({
+                            id: parseInt(badge.getAttribute('data-id')),
+                            nome: badge.getAttribute('data-nome')
+                        });
+                    });
+
+                    // Atualiza a lista interna de integrantes preservando a nova ordem
+                    repertorioTemp[indexDanca].integrantes = novosDancarinos;
+                }
+            });
+        });
+    }
+
+    // Reordena o array principal ao arrastar uma dança inteira
+    function sincronizarOrdemAposDrag() {
+        const novoRepertorio = [];
+        const linhas = document.querySelectorAll('#tbodyRoteiro tr');
+
+        linhas.forEach((tr, index) => {
+            const indexAntigo = parseInt(tr.getAttribute('data-index-danca'));
+            const item = repertorioTemp[indexAntigo];
+            item.ordem = index + 1;
+            novoRepertorio.push(item);
+        });
+
+        repertorioTemp = novoRepertorio;
+        atualizarTabela(); // Re-renderiza garantindo consistência dos índices
+    }
+
+    function removerDanca(index) {
+        repertorioTemp.splice(index, 1);
+        repertorioTemp.forEach((item, idx) => item.ordem = idx + 1);
+        atualizarTabela();
+    }
+
+    function editarApresentacao(id) {
+        fetch(`/apresentacoes/${id}/detalhes`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('apresentacao_id').value = data.id;
+                document.getElementById('ev_nome').value = data.nome_evento;
+                document.getElementById('ev_data').value = data.data_evento;
+                document.getElementById('ev_local').value = data.local_evento;
+
+                // Adequa estrutura retornada pelo backend se necessário
+                repertorioTemp = data.repertorio.map((item, idx) => {
+                    let listaIntegrantes = [];
+
+                    // Suporta formato de array de objetos ou IDs/Nomes pareados
+                    if (item.integrantes) {
+                        listaIntegrantes = item.integrantes;
+                    } else if (item.integrantes_ids) {
+                        listaIntegrantes = item.integrantes_ids.map((pId, pIdx) => ({
+                            id: pId,
+                            nome: item.integrantes_nomes ? item.integrantes_nomes[pIdx] : 'Dançarino'
+                        }));
+                    }
+
+                    return {
+                        danca_id: item.danca_id,
+                        nome_danca: item.nome_danca,
+                        ordem: item.ordem || (idx + 1),
+                        integrantes: listaIntegrantes
+                    };
+                });
+
+                atualizarTabela();
+
+                document.getElementById('formAprTitulo').innerText = "✏️ Editar Escala da Apresentação";
+                document.getElementById('btnSalvarApr').innerHTML = '<i class="bi bi-check2-circle"></i> Atualizar Escala';
+
+                let collapseElem = document.getElementById('formApresentacao');
+                let bsCollapse = new bootstrap.Collapse(collapseElem, { toggle: false });
+                bsCollapse.show();
+                collapseElem.scrollIntoView({ behavior: 'smooth' });
+            });
+    }
+
+    function salvarApresentacaoWeb() {
+        const aprId = document.getElementById('apresentacao_id').value;
+        const nome = document.getElementById('ev_nome').value;
+        const data = document.getElementById('ev_data').value;
+        const local = document.getElementById('ev_local').value;
+
+        if (!nome || !data || !local) {
+            alert('Preencha o Nome do Evento, Data e Local!');
+            return;
+        }
+
+        if (repertorioTemp.length === 0) {
+            alert('Adicione pelo menos uma dança ao roteiro!');
+            return;
+        }
+
+        const [ano, mes, dia] = data.split('-');
+        const dataFormatada = `${dia}/${mes}/${ano}`;
+
+        // Mapeia o repertório mantendo a ordem exata dos dançarinos arrastados
+        const repertorioEnvio = repertorioTemp.map((item, idx) => ({
+            danca_id: item.danca_id,
+            nome_danca: item.nome_danca,
+            ordem: idx + 1,
+            integrantes_ids: item.integrantes.map(p => p.id),
+            integrantes_nomes: item.integrantes.map(p => p.nome)
+        }));
+
+        fetch('/apresentacoes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                apresentacao_id: aprId ? parseInt(aprId) : null,
+                nome_evento: nome,
+                data_evento: dataFormatada,
+                local_evento: local,
+                repertorio: repertorioEnvio
+            })
+        }).then(res => {
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('Ocorreu um erro ao salvar a apresentação.');
+            }
+        });
+    }
+
+    function limparFormApresentacao() {
+        document.getElementById('apresentacao_id').value = '';
+        document.getElementById('ev_nome').value = '';
+        document.getElementById('ev_data').value = '';
+        document.getElementById('ev_local').value = '';
+        repertorioTemp = [];
+        atualizarTabela();
+        document.getElementById('formAprTitulo').innerText = "Montar Escala do Evento";
+        document.getElementById('btnSalvarApr').innerHTML = '<i class="bi bi-check2-circle"></i> Salvar Apresentação';
+    }
+</script>
+{% endblock %}

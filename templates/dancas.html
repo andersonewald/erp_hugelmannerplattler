@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-music-note-beamed"></i> Acervo de Danças</h2>
+    <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#formDanca" onclick="limparFormDanca()">
+        <i class="bi bi-plus-circle"></i> Nova Dança
+    </button>
+</div>
+
+<!-- FORMULÁRIO DE CADASTRO / EDIÇÃO -->
+<div class="collapse mb-4" id="formDanca">
+    <div class="card card-custom p-4">
+        <h4 class="card-title text-primary mb-3" id="formDancaTitulo">Cadastrar Dança</h4>
+        <form action="{{ url_for('dancas') }}" method="POST">
+            <input type="hidden" name="danca_id" id="danca_id">
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Nome da Dança:*</label>
+                    <input type="text" name="nome" id="nome" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Região / Origem:</label>
+                    <input type="text" name="origem" id="origem" class="form-control" placeholder="Ex: Baviera, Áustria...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Duração / Tempo:</label>
+                    <input type="text" name="tempo_musica" id="tempo_musica" class="form-control" placeholder="Ex: 03:45">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Intérprete / Compositor:</label>
+                    <input type="text" name="interprete_compositor" id="interprete_compositor" class="form-control" placeholder="Ex: Banda X / Compositor Y">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Detalhamento Histórico e Descrição:</label>
+                <textarea name="detalhamento_historico" id="detalhamento_historico" class="form-control" rows="4" placeholder="Origem da dança, particularidades dos passos, trajes específicos..."></textarea>
+            </div>
+
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary me-2" onclick="limparFormDanca()">Cancelar</button>
+                <button type="submit" class="btn btn-success" id="btnSalvarDanca"><i class="bi bi-check-circle"></i> Salvar Dança</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABELA DE CONSULTA -->
+<div class="card card-custom p-3">
+    <form method="GET" action="{{ url_for('dancas') }}" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="busca" class="form-control" placeholder="Buscar por nome, origem ou intérprete..." value="{{ busca }}">
+            <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Buscar</button>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Origem</th>
+                    <th>Duração</th>
+                    <th>Intérprete / Compositor</th>
+                    <th>Histórico / Descrição</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dancas %}
+                <tr>
+                    <td class="fw-bold">{{ d.nome }}</td>
+                    <td><span class="badge bg-secondary">{{ d.origem or 'Não informada' }}</span></td>
+                    <td>{{ d.tempo_musica or '—' }}</td>
+                    <td>{{ d.interprete_compositor or '—' }}</td>
+                    <td>
+                        {% if d.detalhamento_historico %}
+                            <small class="text-muted d-inline-block text-truncate" style="max-width: 250px;">
+                                {{ d.detalhamento_historico }}
+                            </small>
+                        {% else %}
+                            <small class="text-muted">—</small>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-warning btn-sm" onclick='editarDanca({{ {
+                            "id": d.id,
+                            "nome": d.nome or "",
+                            "origem": d.origem or "",
+                            "tempo_musica": d.tempo_musica or "",
+                            "interprete_compositor": d.interprete_compositor or "",
+                            "detalhamento_historico": d.detalhamento_historico or ""
+                        } | tojson }})'>
+                            <i class="bi bi-pencil-square"></i> Editar
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Nenhuma dança encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function editarDanca(dados) {
+        document.getElementById('danca_id').value = dados.id;
+        document.getElementById('nome').value = dados.nome;
+        document.getElementById('origem').value = dados.origem;
+        document.getElementById('tempo_musica').value = dados.tempo_musica;
+        document.getElementById('interprete_compositor').value = dados.interprete_compositor;
+        document.getElementById('detalhamento_historico').value = dados.detalhamento_historico;
+
+        document.getElementById('formDancaTitulo').innerText = "✏️ Editar Dança";
+        document.getElementById('btnSalvarDanca').innerHTML = '<i class="bi bi-check-circle"></i> Atualizar Dança';
+
+        let collapseElem = document.getElementById('formDanca');
+        let bsCollapse = new bootstrap.Collapse(collapseElem, { toggle: false });
+        bsCollapse.show();
+        collapseElem.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function limparFormDanca() {
+        document.getElementById('danca_id').value = '';
+        document.getElementById('nome').value = '';
+        document.getElementById('origem').value = '';
+        document.getElementById('tempo_musica').value = '';
+        document.getElementById('interprete_compositor').value = '';
+        document.getElementById('detalhamento_historico').value = '';
+
+        document.getElementById('formDancaTitulo').innerText = "Cadastrar Dança";
+        document.getElementById('btnSalvarDanca').innerHTML = '<i class="bi bi-check-circle"></i> Salvar Dança';
+    }
+</script>
+{% endblock %}

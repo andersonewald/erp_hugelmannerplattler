@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-shield-lock me-2"></i> Utilitários - Controle de Acesso</h2>
+    <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#formUsuario" onclick="limparFormUsuario()">
+        <i class="bi bi-person-plus me-1"></i> Novo Usuário
+    </button>
+</div>
+
+<!-- FORMULÁRIO DE CADASTRO / EDIÇÃO -->
+<div class="collapse mb-4" id="formUsuario">
+    <div class="card card-custom p-4">
+        <h4 class="card-title text-primary mb-3" id="formTituloUsuario">Cadastrar Novo Usuário</h4>
+        <form action="{{ url_for('usuarios') }}" method="POST">
+            <input type="hidden" name="usuario_id" id="usr_id">
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-5">
+                    <label class="form-label fw-bold">Nome Completo:*</label>
+                    <input type="text" name="nome" id="usr_nome" class="form-control" required placeholder="Ex: João da Silva">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Login / Usuário:*</label>
+                    <input type="text" name="login" id="usr_login" class="form-control" required placeholder="Ex: joao.silva">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" id="lblSenha">Senha:*</label>
+                    <input type="password" name="senha" id="usr_senha" class="form-control" placeholder="Digite a senha">
+                    <small class="text-muted d-none" id="hintSenha">Deixe em branco se não desejar alterar a senha atual.</small>
+                </div>
+            </div>
+
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary me-2" onclick="limparFormUsuario()">Cancelar</button>
+                <button type="submit" class="btn btn-success" id="btnSalvarUsuario">
+                    <i class="bi bi-check-circle me-1"></i> Salvar Usuário
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- BARRA DE PESQUISA -->
+<div class="card card-custom p-3 mb-4">
+    <form action="{{ url_for('usuarios') }}" method="GET" class="row g-2">
+        <div class="col-md-10">
+            <input type="text" name="busca" class="form-control" placeholder="Buscar por Nome ou Login..." value="{{ busca }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i> Buscar</button>
+        </div>
+    </form>
+</div>
+
+<!-- LISTAGEM DE USUÁRIOS -->
+<div class="card card-custom p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Login</th>
+                    <th>Status</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td class="fw-bold">{{ u.nome }}</td>
+                    <td><code>{{ u.login }}</code></td>
+                    <td>
+                        {% if u.ativo %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick='prepararEdicaoUsuario({{ {
+                            "id": u.id,
+                            "nome": u.nome,
+                            "login": u.login
+                        } | tojson }})'>
+                            <i class="bi bi-pencil"></i> Editar
+                        </button>
+                        <form action="{{ url_for('alternar_status_usuario', usuario_id=u.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Deseja alterar o status deste usuário?')">
+                            {% if u.ativo %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Inativar Usuário">
+                                    <i class="bi bi-person-x"></i> Inativar
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Ativar Usuário">
+                                    <i class="bi bi-person-check"></i> Ativar
+                                </button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">Nenhum usuário cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function prepararEdicaoUsuario(dados) {
+        document.getElementById('usr_id').value = dados.id;
+        document.getElementById('usr_nome').value = dados.nome;
+        document.getElementById('usr_login').value = dados.login;
+        document.getElementById('usr_senha').value = '';
+        document.getElementById('usr_senha').required = false;
+
+        document.getElementById('lblSenha').innerText = "Nova Senha (Opcional):";
+        document.getElementById('hintSenha').classList.remove('d-none');
+        document.getElementById('formTituloUsuario').innerText = "✏️ Editar Usuário";
+
+        let collapseElem = document.getElementById('formUsuario');
+        let bsCollapse = new bootstrap.Collapse(collapseElem, { toggle: false });
+        bsCollapse.show();
+        collapseElem.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function limparFormUsuario() {
+        document.getElementById('usr_id').value = '';
+        document.getElementById('usr_nome').value = '';
+        document.getElementById('usr_login').value = '';
+        document.getElementById('usr_senha').value = '';
+        document.getElementById('usr_senha').required = true;
+
+        document.getElementById('lblSenha').innerText = "Senha:*";
+        document.getElementById('hintSenha').classList.add('d-none');
+        document.getElementById('formTituloUsuario').innerText = "Cadastrar Novo Usuário";
+    }
+</script>
+{% endblock %}

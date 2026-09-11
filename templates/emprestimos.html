@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-arrow-left-right me-2"></i> Controle de Empréstimos</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoEmprestimo">
+        <i class="bi bi-plus-circle me-1"></i> Registrar Empréstimo
+    </button>
+</div>
+
+<!-- FILTROS DE STATUS -->
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('emprestimos', status='Aberto') }}" class="btn btn-outline-success {% if status_filtro == 'Aberto' %}active{% endif %}">Em Aberto</a>
+        <a href="{{ url_for('emprestimos', status='Devolvido') }}" class="btn btn-outline-success {% if status_filtro == 'Devolvido' %}active{% endif %}">Devolvidos</a>
+        <a href="{{ url_for('emprestimos', status='Todos') }}" class="btn btn-outline-success {% if status_filtro == 'Todos' %}active{% endif %}">Todos</a>
+    </div>
+</div>
+
+<!-- LISTAGEM -->
+<div class="card card-custom p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Integrante</th>
+                    <th>Material Vinculado</th>
+                    <th>Data Retirada</th>
+                    <th>Previsão Devolução</th>
+                    <th>Status</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in emprestimos %}
+                <tr>
+                    <td class="fw-bold">{{ e.pessoa }}</td>
+                    <td><code>{{ e.itens or 'Sem itens associados' }}</code></td>
+                    <td>{{ e.data }}</td>
+                    <td>{{ e.previsao }}</td>
+                    <td>
+                        {% if e.status == 'Aberto' %}
+                            <span class="badge bg-warning text-dark">Aberto</span>
+                        {% else %}
+                            <span class="badge bg-success">Devolvido</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if e.status == 'Aberto' %}
+                        <form action="{{ url_for('devolver_emprestimo', emprestimo_id=e.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Confirmar devolução deste empréstimo?')">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-box-arrow-in-left me-1"></i> Receber Devolução
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-muted small">Finalizado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum empréstimo encontrado para o filtro selecionado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL NOVO EMPRÉSTIMO -->
+<div class="modal fade" id="modalNovoEmprestimo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-success"><i class="bi bi-handbag me-2"></i>Novo Empréstimo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('emprestimos') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Integrante:*</label>
+                        <select name="pessoa_id" class="form-select" required>
+                            <option value="">Selecione quem está retirando...</option>
+                            {% for p in pessoas %}
+                                <option value="{{ p.id }}">{{ p.nome }} ({{ p.categoria }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Material Disponível:*</label>
+                        <select name="bem_id" class="form-select" required>
+                            <option value="">Selecione o item do acervo...</option>
+                            {% for b in bens %}
+                                <option value="{{ b.id }}">[{{ b.codigo_patrimonio }}] {{ b.nome }} - {{ b.categoria }}</option>
+                            {% else %}
+                                <option value="" disabled>Nenhum item disponível no acervo no momento</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Previsão de Devolução:*</label>
+                        <input type="date" name="data_previsao" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observações:</label>
+                        <textarea name="observacao" class="form-control" rows="2" placeholder="Apresentação, evento, etc..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i> Confirmar Saída</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-seam me-2"></i> Acervo de Materiais e Trajes</h2>
+    <button class="btn btn-success" data-bs-toggle="collapse" data-bs-target="#formMaterial" onclick="limparFormMaterial()">
+        <i class="bi bi-plus-circle me-1"></i> Entrada de Materiais (Lote)
+    </button>
+</div>
+
+<!-- FORMULÁRIO DE ENTRADA / EDIÇÃO -->
+<div class="collapse mb-4" id="formMaterial">
+    <div class="card card-custom p-4">
+        <h4 class="card-title text-success mb-3" id="formTitulo">Cadastrar Lote de Materiais</h4>
+        
+        <!-- FORMULÁRIO: CADASTRAR LOTE -->
+        <form action="{{ url_for('materiais') }}" method="POST" enctype="multipart/form-data" id="formLote">
+            <input type="hidden" name="acao" value="cadastrar_lote">
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-5">
+                    <label class="form-label fw-bold">Nome do Material/Traje:*</label>
+                    <input type="text" name="nome" class="form-control" placeholder="Ex: Lederhose, Chapéu, Meias..." required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Categoria:*</label>
+                    <select name="categoria" class="form-select" required>
+                        <option value="Traje Masculino">Traje Masculino</option>
+                        <option value="Traje Feminino">Traje Feminino</option>
+                        <option value="Acessório">Acessório</option>
+                        <option value="Instrumento">Instrumento</option>
+                        <option value="Geral">Geral</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Prefixo do Código:</label>
+                    <input type="text" name="prefixo" class="form-control" value="PAT-" placeholder="PAT-">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Quantidade de Entrada:*</label>
+                    <input type="number" name="quantidade" class="form-control" value="1" min="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Estado de Conservação:</label>
+                    <select name="estado_conservacao" class="form-select">
+                        <option value="Novo">Novo</option>
+                        <option value="Bom" selected>Bom</option>
+                        <option value="Regular">Regular (Necessita Reparo)</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-bold">Valor Estimado Unitário (R$):</label>
+                    <input type="number" step="0.01" name="valor_unitario" class="form-control" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">Anexar Fotos para o Lote (Múltiplas Fotos):</label>
+                    <input type="file" name="fotos" class="form-control" accept="image/*" multiple>
+                    <small class="text-muted">Pressione Ctrl ou Shift para selecionar múltiplos arquivos de imagem.</small>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Descrição / Detalhes:</label>
+                <textarea name="descricao" class="form-control" rows="2" placeholder="Informações de tamanho, cor ou detalhes do lote..."></textarea>
+            </div>
+
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary me-2" onclick="limparFormMaterial()">Cancelar</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i> Gerar Lote</button>
+            </div>
+        </form>
+
+        <!-- FORMULÁRIO: EDIÇÃO DE ITEM ESPECÍFICO -->
+        <form action="{{ url_for('materiais') }}" method="POST" enctype="multipart/form-data" id="formEdicao" style="display: none;">
+            <input type="hidden" name="acao" value="editar">
+            <input type="hidden" name="bem_id" id="edit_bem_id">
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Patrimônio:</label>
+                    <input type="text" id="edit_codigo" class="form-control" readonly disabled>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Estado de Conservação:</label>
+                    <select name="estado_conservacao" id="edit_estado" class="form-select">
+                        <option value="Novo">Novo</option>
+                        <option value="Bom">Bom</option>
+                        <option value="Regular">Regular (Necessita Reparo)</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Valor Estimado (R$):</label>
+                    <input type="number" step="0.01" name="valor_estimado" id="edit_valor" class="form-control">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Descrição:</label>
+                <textarea name="descricao" id="edit_descricao" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">Adicionar Novas Fotos:</label>
+                    <input type="file" name="fotos" class="form-control" accept="image/*" multiple>
+                    <small class="text-muted">As novas fotos selecionadas serão anexadas às existentes no banco.</small>
+                </div>
+            </div>
+
+            <!-- GALERIA DE FOTOS CADASTRADAS NO BANCO -->
+            <div id="galeriaFotosEdicao" class="mb-3 d-none">
+                <label class="form-label fw-bold">Fotos Salvas no Banco de Dados:</label>
+                <div class="d-flex flex-wrap gap-2 border rounded p-2 bg-light" id="containerFotosExistentes">
+                    <!-- Miniaturas das fotos salvas geradas via JS -->
+                </div>
+            </div>
+
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary me-2" onclick="limparFormMaterial()">Cancelar</button>
+                <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle me-1"></i> Salvar Edição</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- BARRA DE PESQUISA -->
+<div class="card card-custom p-3 mb-4">
+    <form action="{{ url_for('materiais') }}" method="GET" class="row g-2">
+        <div class="col-md-10">
+            <input type="text" name="busca" class="form-control" placeholder="Buscar por Nome, Código de Patrimônio ou Categoria..." value="{{ busca }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-success w-100"><i class="bi bi-search me-1"></i> Buscar</button>
+        </div>
+    </form>
+</div>
+
+<!-- LISTAGEM -->
+<div class="card card-custom p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th width="70" class="text-center">Foto</th>
+                    <th>Patrimônio</th>
+                    <th>Item</th>
+                    <th>Categoria</th>
+                    <th>Conservação</th>
+                    <th>Status</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bens %}
+                <tr>
+                    <td class="text-center">
+                        {% if b.fotos and b.fotos|length > 0 %}
+                            <img src="{{ b.fotos[0].foto_base64 }}" class="rounded border shadow-sm" style="width: 45px; height: 45px; object-fit: cover;" alt="Miniatura">
+                        {% else %}
+                            <div class="bg-light rounded d-inline-flex align-items-center justify-content-center border" style="width: 45px; height: 45px;">
+                                <i class="bi bi-image text-muted fs-5"></i>
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ b.codigo_patrimonio }}</code></td>
+                    <td class="fw-bold">{{ b.nome }}</td>
+                    <td><span class="badge bg-light text-dark border">{{ b.categoria }}</span></td>
+                    <td>{{ b.estado_conservacao }}</td>
+                    <td>
+                        {% if b.status == 'Disponível' %}
+                            <span class="badge bg-success">Disponível</span>
+                        {% elif b.status == 'Emprestado' %}
+                            <span class="badge bg-warning text-dark">Emprestado</span>
+                        {% else %}
+                            <span class="badge bg-danger">{{ b.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick='prepararEdicao({{ {
+                            "id": b.id,
+                            "codigo": b.codigo_patrimonio,
+                            "estado": b.estado_conservacao,
+                            "descricao": b.descricao or "",
+                            "valor": b.valor_estimado,
+                            "fotos": b.fotos | map(attribute="id") | list,
+                            "fotos_base64": b.fotos | map(attribute="foto_base64") | list
+                        } | tojson }})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        {% if b.status == 'Disponível' %}
+                        <form action="{{ url_for('excluir_material', id_bem=b.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Deseja realmente excluir este item e todas as suas fotos?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum item cadastrado no acervo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function prepararEdicao(dados) {
+        document.getElementById('formLote').style.display = 'none';
+        document.getElementById('formEdicao').style.display = 'block';
+
+        document.getElementById('edit_bem_id').value = dados.id;
+        document.getElementById('edit_codigo').value = dados.codigo;
+        document.getElementById('edit_estado').value = dados.estado;
+        document.getElementById('edit_descricao').value = dados.descricao;
+        document.getElementById('edit_valor').value = dados.valor;
+
+        document.getElementById('formTitulo').innerText = "✏️ Editar Item Patrimonial";
+
+        // Gerenciar exibição de fotos salvas no banco
+        const containerFotos = document.getElementById('containerFotosExistentes');
+        containerFotos.innerHTML = '';
+
+        if (dados.fotos && dados.fotos.length > 0) {
+            document.getElementById('galeriaFotosEdicao').classList.remove('d-none');
+
+            dados.fotos.forEach((fotoId, index) => {
+                const fotoSrc = dados.fotos_base64[index];
+                const div = document.createElement('div');
+                div.className = 'position-relative d-inline-block me-2 mb-2';
+                div.id = `foto_card_${fotoId}`;
+                div.innerHTML = `
+                    <img src="${fotoSrc}" class="rounded border" style="width: 75px; height: 75px; object-fit: cover;">
+                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 rounded-circle" 
+                            style="width: 22px; height: 22px; line-height: 1; transform: translate(30%, -30%);" 
+                            onclick="deletarFotoBanco(${fotoId})" title="Remover Foto">
+                        &times;
+                    </button>
+                `;
+                containerFotos.appendChild(div);
+            });
+        } else {
+            document.getElementById('galeriaFotosEdicao').classList.add('d-none');
+        }
+
+        let collapseElem = document.getElementById('formMaterial');
+        let bsCollapse = new bootstrap.Collapse(collapseElem, { toggle: false });
+        bsCollapse.show();
+        collapseElem.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function deletarFotoBanco(fotoId) {
+        if (!confirm('Deseja realmente apagar esta foto do banco de dados?')) return;
+
+        fetch(`/materiais/foto/${fotoId}/deletar`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                const card = document.getElementById(`foto_card_${fotoId}`);
+                if (card) card.remove();
+
+                const container = document.getElementById('containerFotosExistentes');
+                if (container.children.length === 0) {
+                    document.getElementById('galeriaFotosEdicao').classList.add('d-none');
+                }
+            } else {
+                alert('Erro ao excluir foto: ' + data.mensagem);
+            }
+        })
+        .catch(err => alert('Erro na requisição: ' + err));
+    }
+
+    function limparFormMaterial() {
+        document.getElementById('formLote').style.display = 'block';
+        document.getElementById('formEdicao').style.display = 'none';
+        document.getElementById('formTitulo').innerText = "Cadastrar Lote de Materiais";
+        document.getElementById('galeriaFotosEdicao').classList.add('d-none');
+    }
+</script>
+{% endblock %}
