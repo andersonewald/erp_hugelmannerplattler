@@ -18,24 +18,8 @@ Sistema Web de Gestão ERP desenvolvido para o grupo folclórico de dança alem�
 
 - **Linguagem:** Python 3.x
 - **Framework Web:** Flask
-- **Banco de Dados:** SQLite / MySQL (via SQLAlchemy)
+- **Banco de Dados:** SQLite / MySQL / PostgreSQL (via SQLAlchemy)
 - **Front-end:** HTML5, CSS3, JavaScript (ES6+), Bootstrap 5 & Bootstrap Icons
 - **Geração de PDF:** WeasyPrint / ReportLab (ou biblioteca correspondente)
 - **Template Engine:** Jinja2
-
----
-
-## 🚀 Como Executar o Projeto Localmente
-
-### Pré-requisitos
-- Python 3.8 ou superior instalado
-- Git instalado
-
-### Passo a passo
-
-1. **Clone o repositório:**
-   ```bash
-   git clone [https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git](https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git)
-   cd SEU-REPOSITORIO
-
 
